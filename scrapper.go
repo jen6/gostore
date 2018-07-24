@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func GetNewApps() (io.ReadCloser, error) {
+func GetNewAppsReader(sz int) (io.ReadCloser, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -26,7 +26,7 @@ func GetNewApps() (io.ReadCloser, error) {
 
 	reqForm := map[string]interface{}{
 		"start":       0,
-		"num":         100,
+		"num":         sz,
 		"numChildren": 0,
 		"cctcss":      "sqare-cover",
 		"cllayout":    "NORMAL",
@@ -58,7 +58,7 @@ type AppInfo struct {
 	PkgName string
 }
 
-func GetAppList(body io.Reader) []AppInfo {
+func GetNewAppList(body io.Reader) []AppInfo {
 	doc, err := gq.NewDocumentFromReader(body)
 	if err != nil {
 		fmt.Println(err)
