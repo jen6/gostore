@@ -50,7 +50,10 @@ func GetApk(path string, ai AppInfo) error {
 		return errors.New("Not apk")
 	}
 
-	downloadApk(link, path, ai.PkgName+".apk")
+	err = downloadApk(link, path, ai.PkgName+".apk")
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -92,7 +95,7 @@ func isApk(url string) bool {
 func downloadApk(url, path, filename string) error {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		30*time.Second,
+		2*time.Minute,
 	)
 	defer cancel()
 

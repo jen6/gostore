@@ -1,18 +1,20 @@
 package gostore
 
 import (
-	"bytes"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	gq "github.com/PuerkitoBio/goquery"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func GetNewAppsReader(sz int) (io.ReadCloser, error) {
+const DefaultFetchSize = 60
+
+func GetNewAppsReader(start, sz int) (io.ReadCloser, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -24,21 +26,21 @@ func GetNewAppsReader(sz int) (io.ReadCloser, error) {
 		Transport: tr,
 	}
 
-	reqForm := map[string]interface{}{
-		"start":       0,
-		"num":         sz,
-		"numChildren": 0,
-		"cctcss":      "sqare-cover",
-		"cllayout":    "NORMAL",
-		"ipf":         1,
-		"xhr":         1,
-	}
+	reqForm := url.Values{}
+	reqForm.Add("start", strconv.Itoa(start))
+	reqForm.Add("num", strconv.Itoa(DefaultFetchSize))
+	reqForm.Add("numChildren", "0")
+	reqForm.Add("cctcss", "square-cover")
+	reqForm.Add("cllayout", "NORMAL")
+	reqForm.Add("ipf", "1")
+	reqForm.Add("xhr", "1")
 
-	jsonData, _ := json.Marshal(reqForm)
-	buffer := bytes.NewBuffer(jsonData)
+	req, err := http.NewRequest("POST", "https://play.google.com/store/apps/collection/topselling_new_free?auth_user=0", strings.NewReader(reqForm.Encode()))
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
+	//	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
 
-	req, err := http.NewRequest("POST", "https://play.google.com/store/apps/collection/topselling_new_free?hl=ko&authuser=0", buffer)
-
+	fmt.Println(reqForm.Encode())
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -58,7 +60,7 @@ type AppInfo struct {
 	PkgName string
 }
 
-func GetNewAppList(body io.Reader) []AppInfo {
+func GetNewAppList(body io.Reader, sz int) []AppInfo {
 	doc, err := gq.NewDocumentFromReader(body)
 	if err != nil {
 		fmt.Println(err)
@@ -81,6 +83,10 @@ func GetNewAppList(body io.Reader) []AppInfo {
 
 		result = append(result, AppInfo{AppName: appName, PkgName: pkgName})
 	})
+
+	if sz < len(result) {
+		result = result[:sz]
+	}
 
 	return result
 }
