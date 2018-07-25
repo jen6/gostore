@@ -1,6 +1,12 @@
 package gostore
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+const tmpPath = "/tmp"
 
 type testGetApk struct {
 	Data   AppInfo
@@ -15,9 +21,11 @@ func TestGetApk(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		err := GetApk("/tmp", test.Data)
+		err := GetApk(tmpPath, test.Data)
 		if test.Result != err {
 			t.Error("Expact : ", test.Result, " Result : ", err)
+		} else {
+			os.Remove(filepath.Join(tmpPath, test.Data.PkgName+".apk"))
 		}
 	}
 }
