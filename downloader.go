@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -20,6 +19,12 @@ const (
 )
 
 func GetApk(path string, ai AppInfo) error {
+	err := downloadApk(path, ai.PkgName)
+	if err != nil {
+		return err
+	}
+	return nil
+
 	tr := &http.Transport{TLSClientConfig: &tls.Config{
 		InsecureSkipVerify: true,
 	},
@@ -48,11 +53,6 @@ func GetApk(path string, ai AppInfo) error {
 
 	if !isApk(link) {
 		return errors.New("Not apk")
-	}
-
-	err = downloadApk(link, path, ai.PkgName+".apk")
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -92,17 +92,17 @@ func isApk(url string) bool {
 	}
 }
 
-func downloadApk(url, path, filename string) error {
+func downloadApk(path, pkgName string) error {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
 		2*time.Minute,
 	)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx,
-		"curl", "-L",
-		"-o", filepath.Join(path, filename),
-		url)
+	cmd := exec.CommandContext(ctx, "gplaycli",
+		"-d", pkgName,
+		"-f", path,
+	)
 
 	if err := cmd.Run(); err != nil {
 		return err

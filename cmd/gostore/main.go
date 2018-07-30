@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	gs "oss.navercorp.com/gungun-son/gostore"
+	"sync"
 	"sync/atomic"
 )
 
@@ -26,6 +27,8 @@ func main() {
 	var appDownloaded int32
 	appDownloaded = 0
 
+	workChan := make(chan interface{}, 10)
+	var wg sync.WaitGroup
 	for ; conf.CrawlSize > 0; conf.CrawlSize -= gs.DefaultFetchSize {
 		body, err := gs.GetNewAppsReader(cnt*gs.DefaultFetchSize, conf.CrawlSize)
 		if err != nil {
@@ -35,8 +38,8 @@ func main() {
 
 		apps := gs.GetNewAppList(body, conf.CrawlSize)
 		fmt.Printf("app data crawl fin! : %d\n", len(apps))
+		body.Close()
 
-		workChan := make(chan interface{}, 10)
 		for _, app := range apps {
 			go func(ap gs.AppInfo) {
 				fmt.Println(ap.AppName, " is now downloading")
@@ -47,12 +50,15 @@ func main() {
 					atomic.AddInt32(&appDownloaded, 1)
 				}
 				<-workChan
+				wg.Done()
 			}(app)
+
+			wg.Add(1)
 			workChan <- nil
 		}
-		body.Close()
 		cnt += 1
 	}
+	wg.Wait()
 
 	fmt.Printf("Total %d apps Crawled\n", appDownloaded)
 }
