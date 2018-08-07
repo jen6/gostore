@@ -1,4 +1,9 @@
 {
-  "SavePath" : "/tmp/apks",
-  "CrawlSize" : 120
+  "SavePath" : "/home1/irteamsu/tmp/apks",
+  "CrawlSize" : 540,
+  "ProxyListPath" : "./proxy-list.txt",
+  "DownloadLinks" : [
+    "https://play.google.com/store/apps/collection/topselling_new_free?auth_user=0" , 
+    "https://play.google.com/store/apps/collection/topselling_free"
+  ]
 }

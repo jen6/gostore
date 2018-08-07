@@ -6,7 +6,7 @@ import (
 )
 
 func TestGetNewApps(t *testing.T) {
-	_, err := GetNewAppsReader(10)
+	_, err := GetNewAppsReader(0, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestGetAppList(t *testing.T) {
 
 	for _, testData := range tests {
 		reader := strings.NewReader(testData.Data)
-		infos := GetNewAppList(reader)
+		infos := GetNewAppList(reader, 1)
 		for i, info := range infos {
 			if testData.AppNames[i] != info.AppName {
 				t.Error("Expact : ", testData.AppNames[i], " Value : ", info.AppName)

@@ -4,8 +4,7 @@ import (
 	"flag"
 	"fmt"
 	gs "oss.navercorp.com/gungun-son/gostore"
-	"sync"
-	"sync/atomic"
+	"time"
 )
 
 func main() {
@@ -23,42 +22,80 @@ func main() {
 		return
 	}
 
-	cnt := 0
-	var appDownloaded int32
-	appDownloaded = 0
+	var tokenDispenser gs.TokenDispenser
+	tokenDispenser.RefreshToken()
 
-	workChan := make(chan interface{}, 10)
-	var wg sync.WaitGroup
-	for ; conf.CrawlSize > 0; conf.CrawlSize -= gs.DefaultFetchSize {
-		body, err := gs.GetNewAppsReader(cnt*gs.DefaultFetchSize, conf.CrawlSize)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		apps := gs.GetNewAppList(body, conf.CrawlSize)
-		fmt.Printf("app data crawl fin! : %d\n", len(apps))
-		body.Close()
-
-		for _, app := range apps {
-			go func(ap gs.AppInfo) {
-				fmt.Println(ap.AppName, " is now downloading")
-				err = gs.GetApk(conf.SavePath, ap)
-				if err != nil {
-					fmt.Println(ap.AppName, " : ", err)
-				} else {
-					atomic.AddInt32(&appDownloaded, 1)
-				}
-				<-workChan
-				wg.Done()
-			}(app)
-
-			wg.Add(1)
-			workChan <- nil
-		}
-		cnt += 1
+	proxyRotate, err := gs.NewProxyRotater(conf.ProxyListPath)
+	if err != nil {
+		fmt.Println("Error in NewProxyRotater : ", err)
+		return
 	}
-	wg.Wait()
+
+	apkManager, err := gs.NewApkManager(conf.SavePath)
+	if err != nil {
+		fmt.Println("error in apkmanager : ", err)
+		return
+	}
+	defer apkManager.Close()
+
+	appDownloaded := 0
+	for _, link := range conf.DownloadLinks {
+		cnt := 0
+		crawlSize := conf.CrawlSize
+		for ; conf.CrawlSize > 0; crawlSize -= gs.DefaultFetchSize {
+			body, err := gs.GetNewAppsReader(link, cnt*gs.DefaultFetchSize, conf.CrawlSize)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			apps := gs.GetNewAppList(body, conf.CrawlSize)
+			fmt.Printf("app data crawl fin! : %d\n", len(apps))
+			body.Close()
+			if len(apps) == 0 {
+				break
+			}
+
+			for _, app := range apps {
+				time.Sleep(15 * time.Second)
+				fmt.Println(app.PkgName, " is now downloading")
+				proxy, isRotate := proxyRotate.Next()
+				if isRotate {
+					tokenDispenser.RefreshToken()
+					gs.TestToken(tokenDispenser.GetToken())
+				}
+
+				newApkinfo, err := gs.SearchApkInfo(proxy, app.PkgName, tokenDispenser.GetToken())
+				if err != nil {
+					fmt.Println("err in Search Apk : ", err)
+					continue
+				}
+				apkinfo, ok := apkManager.ApkChecker[app.PkgName]
+				if ok {
+					isNew := apkinfo.LastUpdate.Before(newApkinfo.LastUpdate)
+					if !isNew {
+						fmt.Println(app.PkgName, " is already outdate")
+						continue
+					}
+					fmt.Println(app.PkgName, " is going update")
+				}
+
+				time.Sleep(15 * time.Second)
+				err = gs.GetApk(proxy, conf.SavePath, app, tokenDispenser.GetToken())
+				if err != nil {
+					fmt.Println(app.AppName, " : ", err)
+				} else {
+					appDownloaded += 1
+					if ok {
+						apkManager.UpdateApk(newApkinfo)
+					} else {
+						apkManager.NewApk(newApkinfo)
+					}
+				}
+			}
+			cnt += 1
+		}
+	}
 
 	fmt.Printf("Total %d apps Crawled\n", appDownloaded)
 }

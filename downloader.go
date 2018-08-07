@@ -1,6 +1,7 @@
 package gostore
 
 import (
+	//"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	gq "github.com/PuerkitoBio/goquery"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -18,8 +20,29 @@ const (
 	kdownLinkLast  = "/download"
 )
 
-func GetApk(path string, ai AppInfo) error {
-	err := downloadApk(path, ai.PkgName)
+func init() {
+	//	refreshToken()
+}
+
+func TestToken(token Token) {
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		1*time.Minute,
+	)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "gplaycli",
+		"-s", "naver",
+		"-ts", token.TokenStr,
+		"-g", token.GsfStr,
+	)
+	_ = cmd.Run()
+	time.Sleep(30 * time.Second)
+	return
+}
+
+func GetApk(proxy, path string, ai AppInfo, token Token) error {
+	err := downloadApk(proxy, path, ai.PkgName, token)
 	if err != nil {
 		return err
 	}
@@ -92,20 +115,37 @@ func isApk(url string) bool {
 	}
 }
 
-func downloadApk(path, pkgName string) error {
+func downloadApk(proxy, path, pkgName string, token Token) error {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		2*time.Minute,
+		5*time.Minute,
 	)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "gplaycli",
 		"-d", pkgName,
 		"-f", path,
+		"-dc", "gemini",
+		"-ts", token.TokenStr,
+		"-g", token.GsfStr,
+		"-v",
 	)
+	//	var stderr bytes.Buffer
+	//	cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err != nil {
+	env := os.Environ()
+
+	proxy_env := fmt.Sprintf("https_proxy=%s", proxy)
+	fmt.Println(proxy_env)
+	env = append(env, proxy_env)
+	cmd.Env = env
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(pkgName, " : ", string(out))
 		return err
+	} else {
+		fmt.Println(pkgName, " : ", string(out))
 	}
 
 	return nil

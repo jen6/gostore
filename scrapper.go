@@ -14,7 +14,7 @@ import (
 
 const DefaultFetchSize = 60
 
-func GetNewAppsReader(start, sz int) (io.ReadCloser, error) {
+func GetNewAppsReader(targetUrl string, start, sz int) (io.ReadCloser, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -35,7 +35,7 @@ func GetNewAppsReader(start, sz int) (io.ReadCloser, error) {
 	reqForm.Add("ipf", "1")
 	reqForm.Add("xhr", "1")
 
-	req, err := http.NewRequest("POST", "https://play.google.com/store/apps/collection/topselling_new_free?auth_user=0", strings.NewReader(reqForm.Encode()))
+	req, err := http.NewRequest("POST", targetUrl, strings.NewReader(reqForm.Encode()))
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
 	//	req.Header.Set("Accept-Encoding", "gzip, deflate, br")

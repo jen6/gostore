@@ -7,8 +7,10 @@ import (
 )
 
 type GSConfig struct {
-	SavePath  string `validate: "required"`
-	CrawlSize int    `validate: "required"`
+	SavePath      string `validate: "required"`
+	CrawlSize     int    `validate: "required"`
+	ProxyListPath string `validate: "required"`
+	DownloadLinks []string
 }
 
 func GetConfig(path string) (GSConfig, error) {
