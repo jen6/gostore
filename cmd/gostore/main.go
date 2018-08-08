@@ -74,7 +74,7 @@ func main() {
 				if ok {
 					isNew := apkinfo.LastUpdate.Before(newApkinfo.LastUpdate)
 					if !isNew {
-						fmt.Println(app.PkgName, " is already outdate")
+						fmt.Println(app.PkgName, " is already latest version")
 						continue
 					}
 					fmt.Println(app.PkgName, " is going update")
